@@ -317,7 +317,6 @@ async def process_text_answer(message: Message, state: FSMContext):
         pair_id=pair_id,
         block=question_index + 1,
         answer=message.text,
-        context=context
     )
 
     # Показываем insight от AI
