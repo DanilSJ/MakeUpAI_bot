@@ -1,5 +1,5 @@
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InputFile
 from io import BytesIO
@@ -100,6 +100,18 @@ INDEX_TO_STATE = {
     6: TestStates.block7,
 }
 
+def get_upgrade_keyboard():
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🚀 Перейти на уровень: Полный Паспорт",
+                    url="https://onomichi.io/resonance"
+                )
+            ]
+        ]
+    )
+    return keyboard
 
 @router.message(F.text == "🔘 Продолжить тест")
 async def continue_test(message: Message, state: FSMContext):
@@ -675,4 +687,24 @@ async def send_passport(message: Message, state: FSMContext, passport_data: dict
 
     # Отправка PDF
     pdf_file = InputFile(buffer, filename="passport.pdf")
-    await message.answer_document(pdf_file, caption="✅ Ваш Паспорт в PDF формате", parse_mode="Markdown")
+    await message.answer_document(
+        pdf_file,
+        caption="✅ Ваш Паспорт в PDF формате",
+        parse_mode="Markdown"
+    )
+
+    # Paywall CTA
+    upgrade_text = (
+        "📊 *Базовый анализ завершен.*\n\n"
+        "Мы выявили ваши зоны резонанса, но также обнаружили "
+        "структурные противоречия, которые могут привести к "
+        "критическому трению в будущем.\n\n"
+        "Бесплатный анализ показывает *ЧТО происходит.*\n\n"
+        "*Полный Паспорт Отношений и AI-Медиатор покажут — КАК ЭТО ИСПРАВИТЬ.*"
+    )
+
+    await message.answer(
+        upgrade_text,
+        reply_markup=get_upgrade_keyboard(),
+        parse_mode="Markdown"
+    )
