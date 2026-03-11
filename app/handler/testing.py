@@ -14,39 +14,69 @@ router = Router()
 SYSTEM_BUTTONS = [
     "🔘 Прервать и продолжить позже",
     "🔘 Написать текстом",
-    "🔘 Ответить голосом"
+    # "🔘 Ответить голосом"
 ]
 # Тестовые вопросы (7 блоков)
 QUESTIONS = [
     {
-        "text": "Блок 1: Как вы реагируете на стресс?",
-        "hint": "Пример: Становлюсь замкнутым / Ищу поддержки / Анализирую ситуацию"
+        "text": "Блок 1: Как вы реагируете на стресс?\n\n"
+                "Вспомните последнюю сложную или стрессовую ситуацию вне отношений.\n"
+                "Как вы себя вели и чего подсознательно ждали от партнера в этот момент?",
+        "hint": "Опишите конкретную ситуацию."
     },
     {
-        "text": "Блок 2: Что для вас важнее всего в отношениях?",
-        "hint": "Пример: Доверие / Свобода / Эмоциональная близость"
+        "text": "Блок 2: Что для вас важнее всего?\n\n"
+                "Без чего ваши отношения потеряли бы для вас всякий смысл?\n"
+                "А что дало бы вам больше всего радости, сил и ощущения ценности отношений?",
+        "hint": "Попробуйте описать ключевые ценности."
     },
     {
-        "text": "Блок 3: Как вы выражаете любовь?",
-        "hint": "Пример: Слова поддержки / Подарки / Время вместе"
+        "text": "Блок 3: Как вы выражаете любовь?\n\n"
+                "Опишите идеальную жизнь с партнером, когда вы чувствуете максимальную близость.\n"
+                "Что вы при этом делаете?",
+        "hint": "Какие действия создают ощущение любви?"
     },
     {
-        "text": "Блок 4: Как вы решаете конфликты?",
-        "hint": "Пример: Обсуждаем сразу / Нужно время подумать"
+        "text": "Блок 4: Как вы решаете конфликты?\n\n"
+                "Вы сильно не согласны с партнером по важному вопросу.\n"
+                "Ваша первая реакция:\n"
+                "доказать свою правоту, промолчать, уйти или что-то другое?\n\n"
+                "Опишите механику вашей реакции.",
+        "hint": "Что происходит в первые минуты конфликта?"
     },
     {
-        "text": "Блок 5: Что вас привлекает в партнёре?",
-        "hint": "Пример: Интеллект / Чувство юмора / Надёжность"
+        "text": "Блок 5: Что вас привлекает в партнере?\n\n"
+                "Какая черта характера или привычка партнера восхищает вас больше всего?",
+        "hint": "Это может быть поведение, ценность или привычка."
     },
     {
-        "text": "Блок 6: Как вы проводите свободное время?",
-        "hint": "Пример: Активно / Дома / С друзьями"
+        "text": "Блок 6: Как вы проводите свободное время?\n\n"
+                "У вас есть полностью свободный день.\n"
+                "Как вы проведете его вместе?",
+        "hint": "Опишите идеальный сценарий."
     },
     {
-        "text": "Блок 7: Ваши цели в отношениях?",
-        "hint": "Пример: Семья / Развитие / Стабильность"
+        "text": "Блок 7: Тест на системную когерентность\n\n"
+                "Представьте: у вас есть красная кнопка.\n"
+                "Если нажать её — из партнера исчезнет черта, которая вас больше всего раздражает.\n\n"
+                "Но вместе с ней исчезнет и та черта, которая восхищает вас больше всего.\n"
+                "(они связаны одним алгоритмом).\n\n"
+                "Вы нажмете кнопку?\n"
+                "Почему да или почему нет?",
+        "hint": "Ответ показывает глубинное принятие личности партнера."
     }
 ]
+
+CONTEXT_QUESTION = {
+    "text": "🔹 Нулевой шаг — Контекст ваших отношений\n\n"
+            "1️⃣ Ваш текущий статус?\n"
+            "(Встречаемся / Живем вместе / В браке / На грани разрыва)\n\n"
+            "2️⃣ Опишите ваши отношения в нескольких словах.\n"
+            "Какие вызовы стоят перед вами?\n"
+            "Что получается лучше всего?\n"
+            "Какие есть проблемы?",
+    "hint": "Ответ можно написать свободным текстом."
+}
 
 # Маппинг состояний на индексы вопросов
 STATE_TO_INDEX = {
@@ -73,46 +103,91 @@ INDEX_TO_STATE = {
 
 @router.message(F.text == "🔘 Продолжить тест")
 async def continue_test(message: Message, state: FSMContext):
-    """Продолжение теста после прерывания"""
+    """Продолжение теста или запуск с нулевого шага (контекст отношений)"""
+
     data = await state.get_data()
     invite_code = data.get("invite_code")
 
     pair = await api.get_pair_by_invite_code(invite_code)
+
     if not pair:
-        await message.answer("❌ Ошибка: пара не найдена. Создайте или присоединитесь к паре.")
+        await message.answer(
+            "❌ Ошибка: пара не найдена.\nСоздайте или присоединитесь к паре."
+        )
         return
+
     pair_id = pair["id"]
+
     await state.update_data(pair_id=pair_id)
 
-    # Проверяем, есть ли сохранённое состояние
+    # Проверяем сохраненное состояние
     paused_state = data.get("paused_state")
     current_question = data.get("current_question", 0)
-    answers = data.get("answers", {})
 
     if paused_state:
-        # Продолжаем с места остановки
         await state.set_state(paused_state)
+
         await message.answer(
-            f"⏯ Продолжаем тест с вопроса {current_question + 1}/{len(QUESTIONS)}",
+            f"⏯ Продолжаем тест\n"
+            f"Вопрос {current_question + 1}/{len(QUESTIONS)}",
             parse_mode="Markdown"
         )
+
         await send_question(message, state, current_question)
         return
 
-    # Если тест не был начат, начинаем с блока 1
+    # Если тест новый — начинаем с НУЛЕВОГО ШАГА
+    await state.set_state(TestStates.context)
+
+    await state.update_data(
+        answers={},
+        current_question=0
+    )
+
+    context_text = (
+        "🔹 *Нулевой шаг — Контекст ваших отношений*\n\n"
+        "1️⃣ Ваш текущий статус?\n"
+        "• Встречаемся\n"
+        "• Живем вместе\n"
+        "• В браке\n"
+        "• На грани разрыва\n\n"
+        "2️⃣ Опишите ваши отношения в нескольких словах:\n"
+        "• Какие вызовы стоят перед вами?\n"
+        "• Что получается лучше всего?\n"
+        "• Какие есть проблемы?\n\n"
+        "✍️ Напишите ответ одним сообщением."
+    )
+
+    await message.answer(
+        context_text,
+        parse_mode="Markdown"
+    )
+
+    # Создаем тестовую сессию первого блока заранее
     start_result = await api.start_test(
         telegram_id=message.from_user.id,
         pair_id=pair_id,
-        block=1
+        block=0  # контекстный блок
     )
+
     if start_result and start_result.get("error"):
-        await message.answer(f"⚠️ Предупреждение: не удалось создать тестовую сессию. Продолжаем...")
+        logger.warning(
+            f"Could not create context test session: {start_result}"
+        )
+
+@router.message(TestStates.context, F.text)
+async def process_context(message: Message, state: FSMContext):
+
+    await state.update_data(context=message.text)
 
     await state.set_state(TestStates.block1)
-    await state.update_data(answers={}, current_question=0)
+
+    await state.update_data(
+        answers={},
+        current_question=0
+    )
 
     await send_question(message, state, 0)
-
 
 async def send_question(message: Message, state: FSMContext, question_index: int):
     """Отправляет вопрос пользователю"""
@@ -131,7 +206,7 @@ async def send_question(message: Message, state: FSMContext, question_index: int
     from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🔘 Ответить голосом")],
+            # [KeyboardButton(text="🔘 Ответить голосом")],
             [KeyboardButton(text="🔘 Написать текстом")],
             [KeyboardButton(text="🔘 Прервать и продолжить позже")]
         ],
@@ -223,11 +298,14 @@ async def process_text_answer(message: Message, state: FSMContext):
     await state.update_data(answers=answers)
 
     # Сохраняем ответ и получаем insight
+    context = data.get("context")
+
     result = await api.save_answer_and_get_insight(
         telegram_id=message.from_user.id,
         pair_id=pair_id,
-        block=question_index + 1,  # блоки с 1
-        answer=message.text
+        block=question_index + 1,
+        answer=message.text,
+        context=context
     )
 
     # Показываем insight от AI
