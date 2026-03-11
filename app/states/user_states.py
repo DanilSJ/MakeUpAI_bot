@@ -17,6 +17,7 @@ class UserStates(StatesGroup):
 
 
 class TestStates(StatesGroup):
+    context = State()
     # Состояния для тестирования (7 блоков)
     block1 = State()
     block2 = State()
